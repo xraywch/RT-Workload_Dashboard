@@ -79,8 +79,8 @@
         <div class="header-actions">
             <div class="last-update" id="systemDate">วันที่ระบบ: --/--/----</div>
             <div>
-                <!-- ลิงก์ไปยังหน้า Import Google Apps Script ของคุณ -->
-                <a href="https://script.google.com/macros/s/AKfycbxjDxXp2-41fvdUvz4eKTO3-RfZQQZycX2c5KPLj266dvepGgplVctaIqIkuwrJT4uxzw/exec" target="_blank" class="btn btn-warning btn-sm fw-bold px-3 shadow-sm text-dark">
+                <!-- ลิงก์ไปยังหน้า Import Google Apps Script ของคุณ (อัปเดตแล้ว) -->
+                <a href="https://script.google.com/macros/s/AKfycbyLK9947-rnXAvVf2CMDy52o46FxjDL3mEW3QYZzfdUJJ6wRbFSBDwXazT9W67Z27uDLw/exec" target="_blank" class="btn btn-warning btn-sm fw-bold px-3 shadow-sm text-dark">
                     ⚙️ จัดการ/นำเข้าข้อมูล (Import Portal)
                 </a>
             </div>
@@ -308,10 +308,11 @@
         return selected;
     }
 
-    // ดึงข้อมูลอัตโนมัติจากหน้า Code.gs (API Endpoint) ทันทีที่เปิดเว็บ
+    // ดึงข้อมูลอัตโนมัติจากหน้า Code.gs (API Endpoint - URL ใหม่)
     async function loadDataFromGoogleSheets() {
         try {
-            const apiUrl = 'https://script.google.com/macros/s/AKfycbyTqA-gBIoaBg5rYgv_1D-fkAwMZETWy3mtISs72U2F92PPn4Qbdbq53DggBWugIq6cVg/exec?action=api';
+            // URL ใหม่ที่คุณให้มา
+            const apiUrl = 'https://script.google.com/macros/s/AKfycbyLK9947-rnXAvVf2CMDy52o46FxjDL3mEW3QYZzfdUJJ6wRbFSBDwXazT9W67Z27uDLw/exec?action=api';
             
             let response = await fetch(apiUrl);
             let jsonData = await response.json();
