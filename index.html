@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radiology Workload Dashboard - Wichianburi Hospital</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts (Sarabun) -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { background-color: #eef2f7; font-family: 'Sarabun', sans-serif; color: #333; }
+        .top-header {
+            background: linear-gradient(90deg, #0d3b66 0%, #1e5a99 100%);
+            color: white; padding: 18px 30px; border-radius: 12px;
+            margin: 15px 15px 20px 15px; display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 10px rgba(13, 59, 102, 0.2);
+        }
+        .header-title h2 { margin: 0; font-weight: 700; font-size: 1.7rem; }
+        .header-title p { margin: 3px 0 0 0; font-size: 0.95rem; color: #d0e1f9; }
+        .header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        .last-update { font-size: 0.85rem; background: rgba(255,255,255,0.18); padding: 4px 14px; border-radius: 20px; }
+
+        .kpi-header {
+            background: linear-gradient(90deg, #1976d2 0%, #2196f3 100%);
+            color: white; padding: 10px 20px; border-radius: 10px 10px 0 0;
+            font-weight: 700; font-size: 1rem; display: flex;
+            justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .kpi-body {
+            background: white; margin-bottom: 20px; padding: 22px 15px;
+            border-radius: 0 0 10px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            display: flex; justify-content: space-around; text-align: center; flex-wrap: wrap;
+        }
+        .kpi-item { flex: 1; min-width: 160px; border-right: 1px solid #e9ecef; padding: 0 15px; }
+        .kpi-item:last-child { border-right: none; }
+        .kpi-item h6 { font-size: 0.92rem; color: #555; font-weight: 600; margin-bottom: 8px; }
+        .kpi-item h2 { font-size: 2.1rem; font-weight: 700; color: #0d3b66; margin: 0; }
+        .kpi-item p { font-size: 0.8rem; color: #777; margin: 6px 0 0 0; }
+
+        .custom-card {
+            background: white; border-radius: 12px; padding: 18px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 20px; border: none;
+        }
+        .pill-title {
+            background-color: #1976d2; color: white; padding: 6px 16px;
+            border-radius: 25px; display: inline-flex; align-items: center; gap: 8px;
+            font-size: 0.92rem; font-weight: 700; margin-bottom: 15px; width: 100%;
+        }
+        .pill-badge-num {
+            background: white; color: #1976d2; border-radius: 50%;
+            width: 22px; height: 22px; display: inline-flex;
+            justify-content: center; align-items: center; font-weight: 700; font-size: 0.8rem;
+        }
+        .filter-label { font-size: 0.85rem; font-weight: 600; color: #495057; margin-bottom: 5px; }
+        .chart-container { position: relative; height: 270px; width: 100%; }
+        .table-exam { font-size: 0.88rem; margin-bottom: 0; }
+        .table-exam th { background-color: #f8f9fa; color: #495057; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+        .exam-row { cursor: pointer; transition: background-color 0.15s ease; }
+        .exam-row:hover { background-color: #f1f8ff !important; }
+        .exam-row.active-exam { background-color: #cfe2ff !important; font-weight: 700; color: #084298; }
+        .badge-count { background-color: #e3f2fd; color: #0d47a1; font-weight: 700; padding: 4px 10px; border-radius: 12px; }
+        .active-filter-tag { background-color: #ffc107; color: #000; font-weight: 700; padding: 3px 12px; border-radius: 15px; font-size: 0.82rem; display: none; align-items: center; gap: 6px; }
+        .active-age-tag { background-color: #ff9800; color: #fff; font-weight: 700; padding: 3px 12px; border-radius: 15px; font-size: 0.82rem; display: none; align-items: center; gap: 6px; }
+    </style>
+</head>
+<body>
+
+    <!-- Top Header -->
+    <div class="top-header">
+        <div class="header-title">
+            <h2>📊 RADIOLOGY WORKLOAD DASHBOARD</h2>
+            <p>ระบบวิเคราะห์ภาระงานและสถิติผู้รับบริการกลุ่มงานรังสีวิทยา - โรงพยาบาลวิเชียรบุรี</p>
+        </div>
+        <div class="header-actions">
+            <div class="last-update" id="systemDate">วันที่ระบบ: --/--/----</div>
+            <div>
+                <!-- ลิงก์ไปยังหน้า Import Google Apps Script ของคุณ -->
+                <a href="https://script.google.com/macros/s/AKfycbxjDxXp2-41fvdUvz4eKTO3-RfZQQZycX2c5KPLj266dvepGgplVctaIqIkuwrJT4uxzw/exec" target="_blank" class="btn btn-warning btn-sm fw-bold px-3 shadow-sm text-dark">
+                    ⚙️ จัดการ/นำเข้าข้อมูล (Import Portal)
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid px-3">
+        <div class="row">
+            <!-- Left Sidebar: Filters & Top 10 Exam Names -->
+            <div class="col-lg-3 col-md-4">
+                <div class="custom-card">
+                    <div class="pill-title">
+                        <span class="pill-badge-num">⚙️</span> ตัวกรองข้อมูล (Filters)
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label class="filter-label">📅 วันที่เริ่มต้น (Start Date)</label>
+                        <input type="date" id="startDate" class="form-control form-control-sm" onchange="onBaseFilterChange()">
+                    </div>
+                    <div class="mb-2">
+                        <label class="filter-label">📅 วันที่สิ้นสุด (End Date)</label>
+                        <input type="date" id="endDate" class="form-control form-control-sm" onchange="onBaseFilterChange()">
+                    </div>
+                    <div class="mb-2">
+                        <label class="filter-label">🩻 ประเภทการตรวจ (Modality)</label>
+                        <select id="modalityFilter" class="form-select form-select-sm" onchange="onModalityChange()">
+                            <option value="ALL">ทั้งหมด (All Modalities)</option>
+                            <option value="Plain Film">Plain Film (เอกซเรย์ทั่วไป - DX)</option>
+                            <option value="Portable">Portable X-Ray (รถเคลื่อนที่)</option>
+                            <option value="CT">CT Scan (เอกซเรย์คอมพิวเตอร์)</option>
+                            <option value="US">Ultrasound (อัลตราซาวนด์)</option>
+                            <option value="MG">Mammogram (แมมโมแกรม)</option>
+                            <option value="RF">Fluoroscopy / พิเศษ (RF)</option>
+                            <option value="MRI">MRI</option>
+                            <option value="UN">Dicom Import / Write CD (UN)</option>
+                            <option value="Other">อื่นๆ (Others / OT)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="filter-label">📋 รายการตรวจ (เลือกหลายรายการได้)</label>
+                        <select id="examNameFilter" class="form-select form-select-sm border-primary" multiple size="4" onchange="updateDashboard()">
+                            <option value="ALL" selected>ทั้งหมดในประเภทที่เลือก</option>
+                        </select>
+                        <small class="text-muted" style="font-size: 0.72rem; display:block; margin-top:3px;">* กด Ctrl ค้างไว้เพื่อเลือกหลายรายการ</small>
+                    </div>
+                    <div class="mb-2">
+                        <label class="filter-label">🎂 กลุ่มอายุ (Age Group)</label>
+                        <select id="ageGroupFilter" class="form-select form-select-sm border-warning" onchange="onBaseFilterChange()">
+                            <option value="ALL">ทุกกลุ่มอายุ (All Ages)</option>
+                            <option value="กลุ่มเด็กเล็ก (0–5 ปี)">กลุ่มเด็กเล็ก (0–5 ปี)</option>
+                            <option value="กลุ่มเด็กโตและวัยรุ่น (6–24 ปี)">กลุ่มเด็กโตและวัยรุ่น (6–24 ปี)</option>
+                            <option value="วัยทำงาน (25–59 ปี)">วัยทำงาน (25–59 ปี)</option>
+                            <option value="ผู้สูงอายุ (60+ ปี)">ผู้สูงอายุ (60+ ปี)</option>
+                            <option value="ไม่ระบุ">ไม่ระบุอายุ</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="filter-label">🕒 กะการทำงาน (อิงเวลา Captured Date)</label>
+                        <select id="shiftFilter" class="form-select form-select-sm" onchange="onBaseFilterChange()">
+                            <option value="ALL">ทั้งหมด (24 ชั่วโมง)</option>
+                            <option value="MORNING">กะเช้า (08:00 - 15:59 น.)</option>
+                            <option value="AFTERNOON">กะบ่าย (16:00 - 23:59 น.)</option>
+                            <option value="NIGHT">กะดึก (00:00 - 07:59 น.)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm w-100 fw-bold" onclick="resetFilters()">
+                        🔄 รีเซ็ตตัวกรองทั้งหมด
+                    </button>
+                </div>
+
+                <!-- Top 10 Exam Names Table -->
+                <div class="custom-card">
+                    <div class="pill-title mb-2">
+                        <span class="pill-badge-num">1</span> 10 อันดับรายการตรวจ (คลิกสะสมได้)
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <small class="text-muted" style="font-size: 0.78rem;">💡 คลิกเพื่อเลือกเปรียบเทียบ</small>
+                        <button id="clearExamBtn" class="btn btn-link btn-sm p-0 text-danger fw-bold d-none" style="font-size: 0.78rem; text-decoration: none;" onclick="selectExamFromTable('ALL')">✖ ยกเลิกทั้งหมด</button>
+                    </div>
+                    <div class="table-responsive" style="max-height: 330px; overflow-y: auto;">
+                        <table class="table table-exam align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ชื่อการตรวจ (Exam Name)</th>
+                                    <th class="text-end">จำนวน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="examNameTableBody">
+                                <tr><td colspan="2" class="text-center text-muted py-4">กำลังโหลดข้อมูลจาก Google Sheets...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Main Area: KPIs & Charts -->
+            <div class="col-lg-9 col-md-8">
+                <div class="kpi-header">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span>📌 RADIOLOGY KPI SUMMARY ภาพรวมตัวชี้วัดตามเงื่อนไขที่เลือก</span>
+                        <span id="activeExamBadge" class="active-filter-tag">
+                            📋 <span id="activeExamText"></span>
+                            <span style="cursor:pointer;" onclick="selectExamFromTable('ALL')">✖</span>
+                        </span>
+                        <span id="activeAgeBadge" class="active-age-tag">
+                            🎂 <span id="activeAgeText"></span>
+                            <span style="cursor:pointer;" onclick="selectAgeFromChart('ALL')">✖</span>
+                        </span>
+                    </div>
+                    <span id="loadedSheetsBadge" class="badge bg-light text-primary">กำลังเชื่อมต่อข้อมูล...</span>
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-item">
+                        <h6>👥 จำนวนผู้รับบริการรวม</h6>
+                        <h2 id="kpiTotal">0</h2>
+                        <p>รายการ (Complete + Finalized)</p>
+                    </div>
+                    <div class="kpi-item">
+                        <h6>☑️ ถ่ายภาพรังสีเสร็จสิ้น (Complete)</h6>
+                        <h2 id="kpiCompleteCount" class="text-primary">0</h2>
+                        <p>รายการที่สถานะ Complete</p>
+                    </div>
+                    <div class="kpi-item">
+                        <h6>📝 รายงานผลแล้ว (Finalized)</h6>
+                        <h2 id="kpiFinalizedCount" class="text-success">0</h2>
+                        <p>รายการที่สถานะ Finalized</p>
+                    </div>
+                    <div class="kpi-item">
+                        <h6>📊 สัดส่วนการรายงานผล</h6>
+                        <h2 id="kpiFinalizedRate" style="color: #f57c00;">0.0%</h2>
+                        <p>คิดเป็นร้อยละของจำนวนรวม</p>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="row">
+                    <div class="col-lg-7">
+                        <div class="custom-card">
+                            <div class="pill-title">
+                                <span class="pill-badge-num">2</span> แนวโน้มปริมาณงานรายวัน (Daily Workload Trend)
+                            </div>
+                            <div class="chart-container"><canvas id="trendChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="custom-card">
+                            <div class="pill-title">
+                                <span class="pill-badge-num">3</span> สัดส่วนตามส่วนที่ตรวจ (Body Parts)
+                            </div>
+                            <div class="chart-container"><canvas id="bodyPartChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="row">
+                    <div class="col-lg-4">
+                        <div class="custom-card">
+                            <div class="pill-title">
+                                <span class="pill-badge-num">4</span> ช่วงเวลาที่ถ่ายภาพหนาแน่น (Peak Hours)
+                            </div>
+                            <div class="chart-container"><canvas id="peakHourChart"></canvas></div>
+                            <div class="text-center mt-1"><small class="text-muted">คำนวณจาก Captured Date</small></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="custom-card">
+                            <div class="pill-title mb-1">
+                                <span class="pill-badge-num">5</span> โครงสร้างกลุ่มอายุ (คลิกแท่งกราฟได้)
+                            </div>
+                            <div class="chart-container"><canvas id="ageChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="custom-card">
+                            <div class="pill-title">
+                                <span class="pill-badge-num">6</span> แผนกที่ส่งตรวจสูงสุด (Top Depts)
+                            </div>
+                            <div class="chart-container"><canvas id="deptChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const today = new Date();
+    document.getElementById('systemDate').innerText = `วันที่ระบบ: ${today.toLocaleDateString('th-TH', {year: 'numeric', month: 'short', day: 'numeric'})}`;
+
+    let rawData = [];
+    let charts = {};
+
+    const AGE_LABELS = [
+        'กลุ่มเด็กเล็ก (0–5 ปี)',
+        'กลุ่มเด็กโตและวัยรุ่น (6–24 ปี)',
+        'วัยทำงาน (25–59 ปี)',
+        'ผู้สูงอายุ (60+ ปี)',
+        'ไม่ระบุ'
+    ];
+
+    function parseExcelDate(val) {
+        if (!val) return null;
+        if (val instanceof Date) return isNaN(val) ? null : val;
+        if (typeof val === 'number') return new Date(Math.round((val - 25569) * 86400 * 1000));
+        if (typeof val === 'string') {
+            let d = new Date(val);
+            return isNaN(d) ? null : d;
+        }
+        return null;
+    }
+
+    function formatDateLocal(dateObj) {
+        if (!dateObj || isNaN(dateObj)) return '';
+        let m = '' + (dateObj.getMonth() + 1), d = '' + dateObj.getDate(), y = dateObj.getFullYear();
+        if (m.length < 2) m = '0' + m;
+        if (d.length < 2) d = '0' + d;
+        return [y, m, d].join('-');
+    }
+
+    function getSelectedExams() {
+        let selectEl = document.getElementById('examNameFilter');
+        let selected = Array.from(selectEl.selectedOptions).map(opt => opt.value);
+        if (selected.includes('ALL') || selected.length === 0) return ['ALL'];
+        return selected;
+    }
+
+    // ดึงข้อมูลอัตโนมัติจากหน้า Code.gs (API Endpoint) ทันทีที่เปิดเว็บ
+    async function loadDataFromGoogleSheets() {
+        try {
+            const apiUrl = 'https://script.google.com/macros/s/AKfycbyTqA-gBIoaBg5rYgv_1D-fkAwMZETWy3mtISs72U2F92PPn4Qbdbq53DggBWugIq6cVg/exec?action=api';
+            
+            let response = await fetch(apiUrl);
+            let jsonData = await response.json();
+
+            rawData = jsonData.map(row => {
+                let newRow = {};
+                for (let key in row) {
+                    newRow[key.trim()] = row[key];
+                }
+                newRow['Start Date'] = parseExcelDate(newRow['Start Date']);
+                newRow['Captured Date'] = parseExcelDate(newRow['Captured Date']);
+                newRow['Exam Name'] = newRow['Exam Name'] ? String(newRow['Exam Name']).trim() : 'ไม่ระบุชื่อการตรวจ';
+                return newRow;
+            }).filter(r => {
+                if (r['Start Date'] === null) return false;
+                let st = String(r['Status'] || '').toLowerCase().trim();
+                return st === 'complete' || st === 'finalized';
+            });
+
+            if (rawData.length > 0) {
+                document.getElementById('loadedSheetsBadge').innerText = `เชื่อมต่อสำเร็จ (${rawData.length.toLocaleString()} เคส)`;
+                setDefaultDates();
+                populateExamNameDropdown(['ALL']);
+                updateDashboard();
+            } else {
+                document.getElementById('loadedSheetsBadge').innerText = 'ไม่พบข้อมูลใน Google Sheets';
+            }
+        } catch (err) {
+            console.error("Error loading data:", err);
+            document.getElementById('loadedSheetsBadge').innerText = 'เกิดข้อผิดพลาดในการโหลดข้อมูล';
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadDataFromGoogleSheets();
+    });
+
+    function setDefaultDates() {
+        if (rawData.length === 0) return;
+        let timestamps = rawData.map(d => d['Start Date'].getTime());
+        let minDate = new Date(Math.min(...timestamps));
+        let maxDate = new Date(Math.max(...timestamps));
+        document.getElementById('startDate').value = formatDateLocal(minDate);
+        document.getElementById('endDate').value = formatDateLocal(maxDate);
+    }
+
+    function resetFilters() {
+        setDefaultDates();
+        document.getElementById('modalityFilter').value = 'ALL';
+        document.getElementById('ageGroupFilter').value = 'ALL';
+        document.getElementById('shiftFilter').value = 'ALL';
+        populateExamNameDropdown(['ALL']);
+        updateDashboard();
+    }
+
+    function onModalityChange() {
+        populateExamNameDropdown(['ALL']);
+        updateDashboard();
+    }
+
+    function onBaseFilterChange() {
+        let currentSelectedExams = getSelectedExams();
+        populateExamNameDropdown(currentSelectedExams);
+        updateDashboard();
+    }
+
+    function getFilteredData(includeExamFilter = false, includeAgeFilter = true) {
+        let sdInput = document.getElementById('startDate').value;
+        let edInput = document.getElementById('endDate').value;
+        let modFilter = document.getElementById('modalityFilter').value;
+        let shiftFilter = document.getElementById('shiftFilter').value;
+        let ageFilter = document.getElementById('ageGroupFilter').value;
+        let examFilters = getSelectedExams();
+
+        let startFilter = sdInput ? new Date(`${sdInput}T00:00:00`) : null;
+        let endFilter = edInput ? new Date(`${edInput}T23:59:59`) : null;
+
+        return rawData.filter(row => {
+            let d = row['Start Date'];
+            if (!d) return false;
+
+            if (startFilter && d < startFilter) return false;
+            if (endFilter && d > endFilter) return false;
+
+            let workTime = row['Captured Date'] ? row['Captured Date'] : row['Start Date'];
+            let hr = workTime.getHours();
+            
+            if (shiftFilter === 'MORNING' && (hr < 8 || hr >= 16)) return false;
+            if (shiftFilter === 'AFTERNOON' && (hr < 16 || hr >= 24)) return false;
+            if (shiftFilter === 'NIGHT' && (hr >= 8)) return false;
+
+            if (modFilter !== 'ALL' && classifyModality(row) !== modFilter) return false;
+            if (includeAgeFilter && ageFilter !== 'ALL' && getAgeGroup(parseAge(row['Age'])) !== ageFilter) return false;
+            if (includeExamFilter && !examFilters.includes('ALL') && !examFilters.includes(row['Exam Name'])) return false;
+
+            return true;
+        });
+    }
+
+    function populateExamNameDropdown(keepSelections = ['ALL']) {
+        let baseData = getFilteredData(false, true);
+        let examCounts = {};
+        
+        baseData.forEach(r => {
+            let eName = r['Exam Name'];
+            examCounts[eName] = (examCounts[eName] || 0) + 1;
+        });
+
+        let sortedExams = Object.entries(examCounts).sort((a, b) => b[1] - a[1]);
+        let selectEl = document.getElementById('examNameFilter');
+        selectEl.innerHTML = '';
+        
+        let allOpt = document.createElement('option');
+        allOpt.value = 'ALL';
+        allOpt.textContent = `ทั้งหมดในประเภทที่เลือก (${sortedExams.length} รายการ)`;
+        if (keepSelections.includes('ALL') || keepSelections.length === 0) allOpt.selected = true;
+        selectEl.appendChild(allOpt);
+        
+        sortedExams.forEach(([name, count]) => {
+            let opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = `${name} (${count.toLocaleString()})`;
+            if (keepSelections.includes(name)) opt.selected = true;
+            selectEl.appendChild(opt);
+        });
+    }
+
+    function selectExamFromTable(examName) {
+        let selectEl = document.getElementById('examNameFilter');
+        if (examName === 'ALL') {
+            Array.from(selectEl.options).forEach(opt => opt.selected = (opt.value === 'ALL'));
+        } else {
+            let allOpt = selectEl.querySelector('option[value="ALL"]');
+            if (allOpt && allOpt.selected) allOpt.selected = false;
+            
+            let targetOpt = selectEl.querySelector(`option[value="${examName}"]`);
+            if (targetOpt) {
+                targetOpt.selected = !targetOpt.selected;
+            }
+            if (getSelectedExams().includes('ALL')) {
+                if (allOpt) allOpt.selected = true;
+            }
+        }
+        updateDashboard();
+    }
+
+    function selectAgeFromChart(ageGroup) {
+        let ageSelect = document.getElementById('ageGroupFilter');
+        if (ageSelect.value === ageGroup) {
+            ageSelect.value = 'ALL';
+        } else {
+            ageSelect.value = ageGroup;
+        }
+        onBaseFilterChange();
+    }
+
+    function classifyModality(row) {
+        let examName = String(row['Exam Name'] || '').toLowerCase();
+        let examType = String(row['Exam Type'] || row['_SourceSheet'] || '').toUpperCase().trim();
+        let portableCol = row['Portable'];
+
+        if (examName.includes('portable') || (portableCol !== null && portableCol !== undefined && String(portableCol).trim() !== '')) {
+            return 'Portable';
+        }
+        if (examType.includes('CT') || examName.includes('ct ')) return 'CT';
+        if (examType.includes('US') || examName.includes('ultrasound') || examName.includes('us ')) return 'US';
+        if (examType.includes('MG') || examName.includes('mammogram')) return 'MG';
+        if (examType.includes('RF') || examName.includes('ivp') || examName.includes('barium')) return 'RF';
+        if (examType.includes('MR') || examName.includes('MRI') || examName.includes('mri')) return 'MRI';
+        if (examType.includes('UN') || examName.includes('dicom') || examName.includes('cd')) return 'UN';
+        if (examType.includes('DX') || examName.includes('film') || examName.includes('chest')) return 'Plain Film';
+        return 'Other';
+    }
+
+    function mapBodyPart(row) {
+        let bGroup = row['Body Part Group'] ? String(row['Body Part Group']).trim() : '';
+        let n = String(row['Exam Name'] || '').toLowerCase();
+
+        if (bGroup.toLowerCase() === 'chest' || n.includes('chest') || n.includes('lung') || n.includes('rib') || n.includes('clavicle')) {
+            return 'Chest (ทรวงอก)';
+        }
+        if (bGroup.toLowerCase() === 'abdomen' || n.includes('abdomen') || n.includes('kub') || n.includes('ivp')) {
+            return 'Abdomen / KUB (ช่องท้อง)';
+        }
+        if (bGroup.toLowerCase() === 'brain' || bGroup.toLowerCase() === 'skull' || n.match(/skull|brain|head|facial|sinus/)) {
+            return 'Neuro / Head (ศีรษะ/สมอง)';
+        }
+        if (bGroup.toLowerCase().includes('spine') || n.match(/spine|c-spine|t-spine|l-spine/)) {
+            return 'Spine (กระดูกสันหลัง)';
+        }
+        if (bGroup.toLowerCase() === 'breast' || n.includes('mammogram')) {
+            return 'Breast (เต้านม)';
+        }
+        if (n.match(/wrist|hand|arm|leg|foot|knee|ankle|femur|tibia|pelvis|hip|joint|bone/)) {
+            return 'MSK (กระดูกและข้อ)';
+        }
+        if (n.includes('dicom') || n.includes('write cd')) {
+            return 'CD / Dicom Import';
+        }
+        if (bGroup && bGroup.toLowerCase() !== 'other') {
+            return bGroup;
+        }
+        return 'Other (อื่นๆ)';
+    }
+
+    function parseAge(ageStr) {
+        if (!ageStr) return null;
+        let s = String(ageStr).toUpperCase();
+        let matchY = s.match(/(\d+)\s*Y/);
+        if (matchY) return parseInt(matchY[1], 10);
+        if (s.includes('M') || s.includes('D')) return 0;
+        let num = parseInt(s, 10);
+        return !isNaN(num) ? num : null;
+    }
+
+    function getAgeGroup(age) {
+        if (age === null) return 'ไม่ระบุ';
+        if (age <= 5) return 'กลุ่มเด็กเล็ก (0–5 ปี)';
+        if (age <= 24) return 'กลุ่มเด็กโตและวัยรุ่น (6–24 ปี)';
+        if (age <= 59) return 'วัยทำงาน (25–59 ปี)';
+        return 'ผู้สูงอายุ (60+ ปี)';
+    }
+
+    function updateDashboard() {
+        if (rawData.length === 0) return;
+
+        let selectedExams = getSelectedExams();
+        let selectedAge = document.getElementById('ageGroupFilter').value;
+
+        let tableBaseData = getFilteredData(false, true);
+        let ageChartData = getFilteredData(true, false);
+        let finalData = getFilteredData(true, true);
+
+        let examBadge = document.getElementById('activeExamBadge');
+        let clearBtn = document.getElementById('clearExamBtn');
+        if (!selectedExams.includes('ALL')) {
+            let badgeText = selectedExams.length <= 2 ? selectedExams.join(', ') : `เลือก ${selectedExams.length} รายการ`;
+            document.getElementById('activeExamText').innerText = badgeText;
+            examBadge.style.display = 'inline-flex';
+            clearBtn.classList.remove('d-none');
+        } else {
+            examBadge.style.display = 'none';
+            clearBtn.classList.add('d-none');
+        }
+
+        let ageBadge = document.getElementById('activeAgeBadge');
+        if (selectedAge !== 'ALL') {
+            document.getElementById('activeAgeText').innerText = selectedAge;
+            ageBadge.style.display = 'inline-flex';
+        } else {
+            ageBadge.style.display = 'none';
+        }
+
+        calculateKPIsAndTable(finalData, tableBaseData, selectedExams);
+        drawCharts(finalData, ageChartData, selectedAge);
+    }
+
+    function calculateKPIsAndTable(finalData, tableBaseData, selectedExams) {
+        let total = finalData.length;
+        let completeCount = 0;
+        let finalizedCount = 0;
+
+        finalData.forEach(d => {
+            let st = String(d['Status'] || '').toLowerCase().trim();
+            if (st === 'complete') completeCount++;
+            if (st === 'finalized') finalizedCount++;
+        });
+
+        let finalizedRate = total > 0 ? ((finalizedCount / total) * 100).toFixed(1) : '0.0';
+
+        document.getElementById('kpiTotal').innerText = total.toLocaleString();
+        document.getElementById('kpiCompleteCount').innerText = completeCount.toLocaleString();
+        document.getElementById('kpiFinalizedCount').innerText = finalizedCount.toLocaleString();
+        document.getElementById('kpiFinalizedRate').innerText = `${finalizedRate}%`;
+
+        let examCounts = {};
+        tableBaseData.forEach(d => {
+            let eName = d['Exam Name'];
+            examCounts[eName] = (examCounts[eName] || 0) + 1;
+        });
+
+        let sortedExams = Object.entries(examCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        let tbody = document.getElementById('examNameTableBody');
+        tbody.innerHTML = '';
+        
+        if (sortedExams.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+        } else {
+            sortedExams.forEach(e => {
+                let isSelected = selectedExams.includes(e[0]);
+                let rowClass = isSelected ? 'exam-row active-exam' : 'exam-row';
+                let safeName = e[0].replace(/'/g, "\\'");
+                tbody.innerHTML += `<tr class="${rowClass}" onclick="selectExamFromTable('${safeName}')" title="คลิกเพื่อเปรียบเทียบข้อมูล">
+                    <td class="text-truncate" style="max-width: 180px;">
+                        <input type="checkbox" class="form-check-input me-1" ${isSelected ? 'checked' : ''} style="pointer-events:none;">
+                        ${e[0]}
+                    </td>
+                    <td class="text-end"><span class="badge-count">${e[1].toLocaleString()}</span></td>
+                </tr>`;
+            });
+        }
+    }
+
+    const renderChart = (canvasId, config) => {
+        if (charts[canvasId]) charts[canvasId].destroy();
+        let ctx = document.getElementById(canvasId);
+        if (ctx) charts[canvasId] = new Chart(ctx, config);
+    };
+
+    function drawCharts(data, ageChartData, selectedAge) {
+        let dateC = {}, bodyC = {}, deptC = {}, ageC = {}, hrC = Array(24).fill(0);
+
+        data.forEach(d => {
+            let ds = formatDateLocal(d['Start Date']);
+            dateC[ds] = (dateC[ds] || 0) + 1;
+
+            let bp = mapBodyPart(d);
+            bodyC[bp] = (bodyC[bp] || 0) + 1;
+
+            let dept = d['Ordering Dept.'] ? String(d['Ordering Dept.']).trim() : 'ไม่ระบุแผนก';
+            deptC[dept] = (deptC[dept] || 0) + 1;
+
+            let workTime = d['Captured Date'] ? d['Captured Date'] : d['Start Date'];
+            hrC[workTime.getHours()]++;
+        });
+
+        ageChartData.forEach(d => {
+            let ag = getAgeGroup(parseAge(d['Age']));
+            ageC[ag] = (ageC[ag] || 0) + 1;
+        });
+
+        const palette = ['#1976d2', '#26a69a', '#f57c00', '#ab47bc', '#ec407a', '#78909c', '#5c6bc0', '#66bb6a'];
+
+        let sortedDates = Object.keys(dateC).sort();
+        renderChart('trendChart', {
+            type: 'line',
+            data: {
+                labels: sortedDates,
+                datasets: [{
+                    label: 'จำนวนเคส',
+                    data: sortedDates.map(k => dateC[k]),
+                    borderColor: '#1976d2',
+                    backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                    borderWidth: 2.5, pointRadius: 3, fill: true, tension: 0.35
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        let sortedBody = Object.entries(bodyC).sort((a, b) => b[1] - a[1]);
+        renderChart('bodyPartChart', {
+            type: 'doughnut',
+            data: {
+                labels: sortedBody.map(x => x[0]),
+                datasets: [{ data: sortedBody.map(x => x[1]), backgroundColor: palette }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '60%',
+                plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+            }
+        });
+
+        renderChart('peakHourChart', {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`),
+                datasets: [{ label: 'จำนวนเคส', data: hrC, backgroundColor: '#26a69a', borderRadius: 3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        const baseAgeColors = ['#4fc3f7', '#26c6da', '#ffa726', '#ef5350', '#bdbdbd'];
+        const activeAgeColors = AGE_LABELS.map((label, idx) => {
+            if (selectedAge === 'ALL' || selectedAge === label) return baseAgeColors[idx];
+            return '#e0e0e0'; 
+        });
+
+        renderChart('ageChart', {
+            type: 'bar',
+            data: {
+                labels: AGE_LABELS,
+                datasets: [{ label: 'จำนวนผู้ป่วย', data: AGE_LABELS.map(l => ageC[l] || 0), backgroundColor: activeAgeColors, borderRadius: 4 }]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) selectAgeFromChart(AGE_LABELS[elements[0].index]);
+                },
+                onHover: (event, chartElement) => {
+                    event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                }
+            }
+        });
+
+        let sDepts = Object.entries(deptC).sort((a, b) => b[1] - a[1]).slice(0, 7);
+        renderChart('deptChart', {
+            type: 'bar',
+            data: {
+                labels: sDepts.map(x => x[0]),
+                datasets: [{ label: 'จำนวนเคส', data: sDepts.map(x => x[1]), backgroundColor: '#1976d2', borderRadius: 4 }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+</script>
+</body>
+</html>
